@@ -11,6 +11,11 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
+.single-line-ellipsis {
+  white-space: nowrap; /* Forces text to stay in a single line */
+  overflow: hidden; /* Hides any overflow content */
+  text-overflow: ellipsis; /* Adds "…" at the cutoff point */
+}
 
 @media (prefers-color-scheme: dark) {
   :root {

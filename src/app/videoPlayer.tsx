@@ -20,6 +20,9 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
   const [rightButtonPosition, setRightButtonPosition] = useState<number>(100);
   const [timeArray, setTimeArray] = useState<number[]>();
   const [isMute, setIsMute] = useState<boolean>(true);
+  const [isLeftDragging, setIsLeftDragging] = useState<boolean>(false);
+  const [isRightDragging, setIsRightDragging] = useState<boolean>(false);
+  const [isProgressDragging, setIsProgressDragging] = useState<boolean>(false);
 
   const [videoDuration, setVideoDuration] = useState<{
     start: number;
@@ -73,15 +76,12 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
     videoRef.current.currentTime = progressInSeconds;
   };
 
-  const [isLeftDragging, setIsLeftDragging] = useState<boolean>(false);
-  const [isRightDragging, setIsRightDragging] = useState<boolean>(false);
-
   const handleEditButtonMove = useCallback(
     (event: MouseEvent | TouchEvent) => {
       if (
         !videoBarRef.current ||
         !videoRef.current ||
-        (!isRightDragging && !isLeftDragging)
+        (!isRightDragging && !isLeftDragging && !isProgressDragging)
       )
         return;
 
@@ -104,8 +104,13 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
 
       const percentageProgress = progress * 100;
 
+      if (isProgressDragging) {
+        videoRef.current.currentTime = progressInSeconds;
+        setVideoProgressBar(Math.min(100, Math.max(0, percentageProgress)));
+        return;
+      }
+
       if (isLeftDragging) {
-        const clampedPercent = Math.min(100, Math.max(0, percentageProgress));
         if (percentageProgress < 0) {
           setLeftButtonPosition(0);
           return;
@@ -142,7 +147,7 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
         );
       }
     },
-    [isLeftDragging, isRightDragging]
+    [isLeftDragging, isRightDragging, isProgressDragging]
   );
 
   const handleLeftButtonDrag = () => {
@@ -151,6 +156,10 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
 
   const handleRightButtonDrag = () => {
     setIsRightDragging(true);
+  };
+
+  const handleProgressDrag = () => {
+    setIsProgressDragging(true);
   };
 
   useEffect(() => {
@@ -184,6 +193,7 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
     }
     setIsLeftDragging(false);
     setIsRightDragging(false);
+    setIsProgressDragging(false);
   }, [isLeftDragging, isRightDragging, videoDuration]);
 
   useEffect(() => {
@@ -312,10 +322,10 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
   };
 
   return (
-    <div className="flex flex-col  items-center justify-center w-full px-2">
+    <div className="flex flex-col  items-center relative justify-center w-full px-2">
       <div className="flex gap-2 pb-4 items-center justify-between w-full">
-        <span className="text-[0.80rem]">
-          {uploadFile.file.name.slice(0, 70)}
+        <span className="text-[0.80rem] max-w-[200px] overflow-x-auto single-line-ellipsis">
+          {uploadFile.file.name.slice(0, 35)}
         </span>
         <form onSubmit={handleSubmit}>
           <button
@@ -350,46 +360,52 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
           <Mute isMute={isMute} width="24px" height="24px" />
         </button>
       </div>
-      <div className="relative w-full flex grid-cols-6 py-4 items-center justify-between px-2">
-        {timeArray &&
-          timeArray.map((time, index) => (
-            <span key={index} className="bottom-0 text-[0.75rem] text-gray-400">
-              {formatTime(Math.floor(time))}
-            </span>
-          ))}
-      </div>
-      <div
-        ref={videoBarRef}
-        className="min-w-full flex bg-black/50 h-10 relative z-5  rounded-xl"
-      >
+      <div className="relative w-full h-[100px]">
+        <div className="relative w-full flex grid-cols-6 py-4 items-center justify-between px-2">
+          {timeArray &&
+            timeArray.map((time, index) => (
+              <span
+                key={index}
+                className="bottom-0 text-[0.75rem] text-gray-400"
+              >
+                {formatTime(Math.floor(time))}
+              </span>
+            ))}
+        </div>
         {!isLeftDragging && (
-          <span
+          <button
+            onMouseDown={handleProgressDrag}
+            onTouchStart={handleProgressDrag}
             style={{ left: `${videoProgressBar}%` }}
-            className="absolute h-10 w-[2px] bg-blue-400"
-          ></span>
+            className="absolute cursor-pointer bottom-0 h-[60%] z-[40] w-[6px] rounded-xl bg-blue-400"
+          ></button>
         )}
-
-        <button
-          onMouseDown={handleLeftButtonDrag}
-          onTouchStart={handleLeftButtonDrag}
-          ref={leftButton}
-          style={{ left: `${leftButtonPosition}%` }}
-          className="absolute flex items-center justify-center  w-[10px]  z-5 cursor-pointer"
+        <div
+          ref={videoBarRef}
+          className="min-w-full flex bg-neutral-900 cursor-pointer  h-10  relative z-[5]  rounded-xl"
         >
-          <div className="h-10 bg-white w-[6px] rounded-xl"></div>
-        </button>
-        <button
-          onMouseDown={handleRightButtonDrag}
-          onTouchStart={handleRightButtonDrag}
-          ref={rightButton}
-          style={{
-            left: `${rightButtonPosition}%`,
-            transform: "translateX(-80%)",
-          }}
-          className="absolute flex items-center justify-center  w-[10px]  z-5 cursor-pointer"
-        >
-          <div className="h-10 bg-white w-[6px] rounded-xl"></div>
-        </button>
+          <button
+            onMouseDown={handleLeftButtonDrag}
+            onTouchStart={handleLeftButtonDrag}
+            ref={leftButton}
+            style={{ left: `${leftButtonPosition}%` }}
+            className="absolute flex items-center justify-center  w-[10px]  z-5 cursor-pointer"
+          >
+            <div className="h-10 bg-white w-[6px] rounded-xl"></div>
+          </button>
+          <button
+            onMouseDown={handleRightButtonDrag}
+            onTouchStart={handleRightButtonDrag}
+            ref={rightButton}
+            style={{
+              left: `${rightButtonPosition}%`,
+              transform: "translateX(-80%)",
+            }}
+            className="absolute flex items-center justify-center  w-[10px]  z-5 cursor-pointer"
+          >
+            <div className="h-10 bg-white w-[6px] rounded-xl"></div>
+          </button>
+        </div>
       </div>
     </div>
   );
