@@ -50,7 +50,6 @@ export default function Home() {
 
   return (
     <div className="flex flex-col items-center justify-center mx-auto lg:max-w-[800px] w-full py-4 gap-4">
-      <h1>Online video editor</h1>
       {medias.map((file, index) => (
         <div key={index}>
           <VideoPlayer uploadFile={file} />

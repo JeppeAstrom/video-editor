@@ -48,6 +48,15 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
 
     const progressInSeconds = videoRef.current.duration * progress;
 
+    if (
+      videoDuration &&
+      (progressInSeconds > videoDuration.stop ||
+        progressInSeconds < videoDuration.start)
+    ) {
+      videoRef.current.currentTime = videoDuration.start;
+      return;
+    }
+
     videoRef.current.currentTime = progressInSeconds;
   };
 
@@ -61,7 +70,6 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
       (!isRightDragging && !isLeftDragging)
     )
       return;
-
     const progressBarWidth = videoBarRef.current?.clientWidth;
 
     const progressBarRelative = videoBarRef.current.getBoundingClientRect();
@@ -71,10 +79,6 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
     const progress = currentClickPosition / progressBarWidth;
 
     const progressInSeconds = videoRef.current.duration * progress;
-
-    if (isLeftDragging) {
-      videoRef.current.currentTime = progressInSeconds;
-    }
 
     const percentageProgress = progress * 100;
 
@@ -88,6 +92,7 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
         return;
       }
       setLeftButtonPosition(percentageProgress);
+      videoRef.current.currentTime = progressInSeconds;
       setVideoDuration((prev) =>
         prev === undefined
           ? { start: progressInSeconds, stop: videoRef.current?.duration ?? 10 }
@@ -157,19 +162,27 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
   });
 
   const handleOutOfBoundriesCheck = () => {
-    // if (!videoRef.current) return;
-    // const time = Math.round(videoRef.current.currentTime);
-    // const videoLength = videoRef.current.duration;
-    // const currentProgress = (time / videoLength) * 100;
-    // console.log("currentProgress ", currentProgress);
-    // console.log("rightButtonPosition ", rightButtonPosition);
-    // console.log(videoDuration);
-    // if (currentProgress <= rightButtonPosition && videoDuration) {
-    //   videoRef.current.currentTime = videoDuration.start;
-    // }
-    // if (currentProgress > leftButtonPosition && videoDuration) {
-    //   videoRef.current.currentTime = videoDuration.start;
-    // }
+    if (!videoRef.current) return;
+    const time = Math.round(videoRef.current.currentTime);
+    const videoLength = videoRef.current.duration;
+    const currentProgress = (time / videoLength) * 100;
+    if (
+      currentProgress >= rightButtonPosition &&
+      videoDuration &&
+      !isRightDragging &&
+      !isLeftDragging
+    ) {
+      videoRef.current.currentTime = videoDuration.start;
+      videoRef.current.play();
+    }
+    if (
+      currentProgress < leftButtonPosition &&
+      videoDuration &&
+      !isRightDragging &&
+      !isLeftDragging
+    ) {
+      videoRef.current.currentTime = videoDuration.start;
+    }
   };
 
   return (
@@ -186,7 +199,7 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
       />
       <div
         ref={videoBarRef}
-        className="w-full flex bg-black/50 h-10 relative z-5"
+        className="w-full flex bg-black/50 h-10 relative z-5 mt-5"
       >
         {!isLeftDragging && (
           <span
