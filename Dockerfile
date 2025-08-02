@@ -4,13 +4,13 @@ WORKDIR /app
 
 COPY package*.json ./
 
-ARG FFMPEG_PATH
-
 RUN npm install
+
+RUN apk add --no-cache ffmpeg
 
 COPY . .
 
-ENV FFMPEG_PATH=${FFMPEG_PATH}
+ENV FFMPEG_PATH=/usr/bin/ffmpeg
 
 RUN npm run build
 

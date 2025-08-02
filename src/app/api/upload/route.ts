@@ -68,7 +68,7 @@ function parseMultipartForm(req: Request): Promise<ParsedForm> {
 export async function POST(req: Request) {
   try {
     const ffmpegPath = process.env.FFMPEG_PATH;
-
+    console.log("FFMPEG_PATH from env:", process.env.FFMPEG_PATH);
     if (!ffmpegPath) {
       return NextResponse.json(
         { error: "FFMPEG_PATH not defined" },
