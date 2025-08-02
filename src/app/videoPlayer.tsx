@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatTime } from "./helper/timeHelper";
 import DownloadIcon from "./icons/download";
+import LoadingSpinner from "./icons/loadingspinner";
 import Mute from "./icons/mute";
 import PlayPauseIcon from "./icons/play";
 import { UploadFile } from "./types/uploadFile";
@@ -23,6 +24,7 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
   const [isLeftDragging, setIsLeftDragging] = useState<boolean>(false);
   const [isRightDragging, setIsRightDragging] = useState<boolean>(false);
   const [isProgressDragging, setIsProgressDragging] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [videoDuration, setVideoDuration] = useState<{
     start: number;
@@ -239,7 +241,7 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
     e.preventDefault();
 
     if (!videoRef.current) return;
-
+    setIsLoading(true);
     const formData = new FormData();
     formData.append("video", uploadFile.file);
     formData.append("startTime", String(videoDuration?.start ?? 0));
@@ -253,7 +255,9 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
       body: formData,
     });
 
-    if (!res.ok) return alert("Trimming failed");
+    if (!res.ok) {
+      setIsLoading(false);
+    }
 
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
@@ -263,6 +267,7 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
     a.download = "trimmed.mp4";
     a.click();
     URL.revokeObjectURL(url);
+    setIsLoading(false);
   }
 
   useEffect(() => {
@@ -332,8 +337,14 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
             className="rounded-md cursor-pointer w-[120px] flex items-center justify-center gap-4 bg-neutral-50 py-2 text-black text-[0.80rem]"
             type="submit"
           >
-            Export
-            <DownloadIcon width="24px" height="24px" />
+            {isLoading ? (
+              <LoadingSpinner width="24px" height="24px" />
+            ) : (
+              <div className="flex items-center justify-center gap-3">
+                Export
+                <DownloadIcon width="24px" height="24px" />
+              </div>
+            )}
           </button>
         </form>
       </div>

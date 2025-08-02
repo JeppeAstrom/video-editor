@@ -29,7 +29,7 @@ export default function Home() {
             if (e.type === "file") {
             }
           }}
-          className="bg-neutral-50 relative flex items-center justify-center z-5 rounded-md w-[200px]  px-5 p-2 text-black text-[0.85rem] font-semibold"
+          className="bg-neutral-50 relative flex items-center justify-center mb-20 z-5 rounded-md w-[200px]  px-5 p-2 text-black text-[0.85rem] font-semibold"
         >
           Upload file
           <input

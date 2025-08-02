@@ -13,8 +13,6 @@ export const config = {
   },
 };
 
-ffmpeg.setFfmpegPath("C:\\ffmpeg\\ffmpeg.exe");
-
 type ParsedForm = {
   fields: Record<string, string>;
   filePath: string;
@@ -69,6 +67,17 @@ function parseMultipartForm(req: Request): Promise<ParsedForm> {
 
 export async function POST(req: Request) {
   try {
+    const ffmpegPath = process.env.FFMPEG_PATH;
+
+    if (!ffmpegPath) {
+      return NextResponse.json(
+        { error: "FFMPEG_PATH not defined" },
+        { status: 500 }
+      );
+    }
+
+    ffmpeg.setFfmpegPath(ffmpegPath);
+
     const { fields, filePath } = await parseMultipartForm(req);
     const startTime = parseFloat(fields.startTime);
     const endTime = parseFloat(fields.endTime);
