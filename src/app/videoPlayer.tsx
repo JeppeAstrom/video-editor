@@ -352,6 +352,8 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
         <video
           ref={videoRef}
           loop
+          disableRemotePlayback={true}
+          playsInline
           muted={isMute}
           onTimeUpdate={handleOutOfBoundariesCheck}
           preload="metadata"
@@ -388,7 +390,7 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
             onMouseDown={handleProgressDrag}
             onTouchStart={handleProgressDrag}
             style={{ left: `${videoProgressBar}%` }}
-            className="absolute cursor-pointer bottom-0 h-[60%] z-[40] w-[6px] rounded-xl bg-blue-400"
+            className="absolute cursor-pointer bottom-0 h-[60%] z-[40] w-[5px] rounded-xl bg-blue-400"
           ></button>
         )}
         <div
@@ -400,7 +402,7 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
             onTouchStart={handleLeftButtonDrag}
             ref={leftButton}
             style={{ left: `${leftButtonPosition}%` }}
-            className="absolute flex items-center justify-center  w-[10px]  z-5 cursor-pointer"
+            className="absolute flex items-center justify-center  w-[12px]  z-5 cursor-pointer"
           >
             <div className="h-10 bg-white w-[6px] rounded-xl"></div>
           </button>
@@ -412,7 +414,7 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
               left: `${rightButtonPosition}%`,
               transform: "translateX(-80%)",
             }}
-            className="absolute flex items-center justify-center  w-[10px]  z-5 cursor-pointer"
+            className="absolute flex items-center justify-center  w-[12px]  z-5 cursor-pointer"
           >
             <div className="h-10 bg-white w-[6px] rounded-xl"></div>
           </button>
