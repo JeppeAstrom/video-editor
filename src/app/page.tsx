@@ -5,26 +5,24 @@ import { UploadFile } from "./types/uploadFile";
 import VideoPlayer from "./videoPlayer";
 
 export default function Home() {
-  const [medias, setMedias] = useState<UploadFile[]>([]);
+  const [media, setMedia] = useState<UploadFile>();
 
   const uploadFileHandler = (fileList: FileList | null) => {
     if (!fileList) return;
 
-    const files = [...fileList];
-    files.filter((x) => x.type.startsWith("video/"));
+    const file = [...fileList][0];
 
-    files.forEach((file) => {
-      setMedias((prev) => [
-        ...prev,
-        {
-          src: URL.createObjectURL(file),
-          file: file,
-        },
-      ]);
+    if (!file.type.startsWith("video/")) {
+      return;
+    }
+
+    setMedia({
+      src: URL.createObjectURL(file),
+      file: file,
     });
   };
 
-  if (medias.length === 0) {
+  if (!media) {
     return (
       <div className="fixed inset-0 w-screen h-screen flex items-center justify-center pb-40">
         <div
@@ -39,7 +37,6 @@ export default function Home() {
             onChange={(e) => {
               uploadFileHandler(e.target.files);
             }}
-            multiple
             type="file"
             className="opacity-0 w-full h-full absolute cursor-pointer"
           />
@@ -49,12 +46,8 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center mx-auto lg:max-w-[800px] w-full py-4 gap-4">
-      {medias.map((file, index) => (
-        <div key={index}>
-          <VideoPlayer uploadFile={file} />
-        </div>
-      ))}
+    <div className="flex flex-col items-center justify-center mx-auto lg:max-w-[600px] w-full py-4">
+      <VideoPlayer uploadFile={media} />
     </div>
   );
 }
