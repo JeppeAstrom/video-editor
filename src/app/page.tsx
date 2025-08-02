@@ -21,7 +21,6 @@ export default function Home() {
       file: file,
     });
   };
-
   if (!media) {
     return (
       <div className="fixed inset-0 w-screen h-screen flex items-center justify-center pb-40">
@@ -30,9 +29,9 @@ export default function Home() {
             if (e.type === "file") {
             }
           }}
-          className="bg-neutral-50 relative flex items-center justify-center z-5 rounded-xl w-[350px] h-[100px]  px-5 p-2 text-black text-[0.85rem] font-semibold"
+          className="bg-neutral-50 relative flex items-center justify-center z-5 rounded-md w-[200px]  px-5 p-2 text-black text-[0.85rem] font-semibold"
         >
-          Tap to upload the file you want to edit ...
+          Upload file
           <input
             onChange={(e) => {
               uploadFileHandler(e.target.files);

@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatTime } from "./helper/timeHelper";
+import DownloadIcon from "./icons/download";
+import Mute from "./icons/mute";
+import PlayPauseIcon from "./icons/play";
 import { UploadFile } from "./types/uploadFile";
 
 interface Props {
@@ -16,6 +19,7 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
   const [leftButtonPosition, setLeftButtonPosition] = useState<number>(0);
   const [rightButtonPosition, setRightButtonPosition] = useState<number>(100);
   const [timeArray, setTimeArray] = useState<number[]>();
+  const [isMute, setIsMute] = useState<boolean>(true);
 
   const [videoDuration, setVideoDuration] = useState<{
     start: number;
@@ -255,6 +259,8 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
     const video = videoRef.current;
     if (!video) return;
 
+    videoRef.current?.play();
+
     const handleLoadedMetadata = () => {
       const duration = video.duration;
       const timeArray: number[] = [];
@@ -273,18 +279,77 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
     };
   }, []);
 
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handlePause);
+
+    return () => {
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handlePause);
+    };
+  }, []);
+
+  const togglePlayPause = () => {
+    if (!videoRef.current) return;
+
+    if (isPlaying) {
+      videoRef.current.pause();
+    } else {
+      videoRef.current.play();
+    }
+  };
+
+  const toggleMute = () => {
+    setIsMute((prev) => !prev);
+  };
+
   return (
     <div className="flex flex-col  items-center justify-center w-full px-2">
-      <video
-        ref={videoRef}
-        muted
-        autoPlay
-        loop
-        onTimeUpdate={handleOutOfBoundariesCheck}
-        preload="metadata"
-        className="aspect-square bg-black w-full h-full rounded-xl"
-        src={uploadFile.src}
-      />
+      <div className="flex gap-2 pb-4 items-center justify-between w-full">
+        <span className="text-[0.80rem]">
+          {uploadFile.file.name.slice(0, 70)}
+        </span>
+        <form onSubmit={handleSubmit}>
+          <button
+            className="rounded-md cursor-pointer w-[120px] flex items-center justify-center gap-4 bg-neutral-50 py-2 text-black text-[0.80rem]"
+            type="submit"
+          >
+            Export
+            <DownloadIcon width="24px" height="24px" />
+          </button>
+        </form>
+      </div>
+      <div className="relative flex items-center justify-center w-full h-full">
+        <video
+          ref={videoRef}
+          loop
+          muted={isMute}
+          onTimeUpdate={handleOutOfBoundariesCheck}
+          preload="metadata"
+          className="aspect-square bg-black w-full h-full rounded-xl"
+          src={uploadFile.src}
+        />
+        <button
+          onClick={togglePlayPause}
+          className="absolute bottom-3 left-3 z-10 cursor-pointer"
+        >
+          <PlayPauseIcon isPaused={isPlaying} width="24px" height="24px" />
+        </button>
+        <button
+          onClick={toggleMute}
+          className="absolute bottom-3 left-12 z-10 cursor-pointer"
+        >
+          <Mute isMute={isMute} width="24px" height="24px" />
+        </button>
+      </div>
       <div className="relative w-full flex grid-cols-6 py-4 items-center justify-between px-2">
         {timeArray &&
           timeArray.map((time, index) => (
@@ -309,7 +374,7 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
           onTouchStart={handleLeftButtonDrag}
           ref={leftButton}
           style={{ left: `${leftButtonPosition}%` }}
-          className="absolute flex items-center justify-center  w-[10px]  z-5"
+          className="absolute flex items-center justify-center  w-[10px]  z-5 cursor-pointer"
         >
           <div className="h-10 bg-white w-[6px] rounded-xl"></div>
         </button>
@@ -321,19 +386,11 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
             left: `${rightButtonPosition}%`,
             transform: "translateX(-80%)",
           }}
-          className="absolute flex items-center justify-center  w-[10px]  z-5"
+          className="absolute flex items-center justify-center  w-[10px]  z-5 cursor-pointer"
         >
           <div className="h-10 bg-white w-[6px] rounded-xl"></div>
         </button>
       </div>
-      <form className="py-4" onSubmit={handleSubmit}>
-        <button
-          className="rounded-xl w-[100px] bg-neutral-50 py-2 text-black text-[0.80rem]"
-          type="submit"
-        >
-          Export
-        </button>
-      </form>
     </div>
   );
 };
