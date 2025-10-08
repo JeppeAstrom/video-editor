@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePreventScroll } from "react-aria";
+import Cropper from "./cropper";
 import { formatTime } from "./helper/timeHelper";
 import DownloadIcon from "./icons/download";
 import LoadingSpinner from "./icons/loadingspinner";
 import Mute from "./icons/mute";
 import PlayPauseIcon from "./icons/play";
+import { MediaCrop } from "./types/mediacrop";
 import { UploadFile } from "./types/uploadFile";
 
 interface Props {
   uploadFile: UploadFile;
 }
 
-const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
+const VideoEditor: React.FC<Props> = ({ uploadFile }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoBarRef = useRef<HTMLDivElement>(null);
   const leftButton = useRef<HTMLButtonElement>(null);
@@ -25,12 +28,19 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
   const [isRightDragging, setIsRightDragging] = useState<boolean>(false);
   const [isProgressDragging, setIsProgressDragging] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
+  const [volume, setVolume] = useState<number>(0.1);
+  const [showVolumeBar, setShowVolumeBar] = useState<boolean>(false);
+  const [isCropping, setIsCropping] = useState<boolean>(false);
+  const [croppedValues, setCroppedValues] = useState<MediaCrop>({
+    heightPercent: 100,
+    widthPercent: 100,
+    xPercent: 0,
+    yPercent: 0,
+  });
   const [videoDuration, setVideoDuration] = useState<{
     start: number;
     stop: number;
   }>();
-
   const updateVideoProgressBar = () => {
     if (!videoRef.current) return;
 
@@ -49,7 +59,6 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
       rightButton.current?.contains(event.target as Node)
     )
       return;
-
     const progressBarWidth = videoBarRef.current.clientWidth;
     const progressBarRelative = videoBarRef.current.getBoundingClientRect();
 
@@ -77,15 +86,15 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
 
     videoRef.current.currentTime = progressInSeconds;
   };
-
   const handleEditButtonMove = useCallback(
     (event: MouseEvent | TouchEvent) => {
       if (
         !videoBarRef.current ||
         !videoRef.current ||
         (!isRightDragging && !isLeftDragging && !isProgressDragging)
-      )
+      ) {
         return;
+      }
 
       const progressBarWidth = videoBarRef.current?.clientWidth;
 
@@ -113,6 +122,10 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
       }
 
       if (isLeftDragging) {
+        if (percentageProgress >= rightButtonPosition - 5) {
+          return;
+        }
+
         if (percentageProgress < 0) {
           setLeftButtonPosition(0);
           return;
@@ -122,6 +135,7 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
           return;
         }
         setLeftButtonPosition(percentageProgress);
+
         videoRef.current.currentTime = progressInSeconds;
         setVideoDuration((prev) =>
           prev === undefined
@@ -133,6 +147,10 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
         );
       }
       if (isRightDragging) {
+        if (percentageProgress <= leftButtonPosition + 5) {
+          return;
+        }
+
         if (percentageProgress < 0) {
           setRightButtonPosition(0);
           return;
@@ -142,14 +160,24 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
           return;
         }
         setRightButtonPosition(percentageProgress);
+
         setVideoDuration((prev) =>
           prev === undefined
-            ? { start: 0, stop: progressInSeconds ?? 10 }
+            ? {
+                start: 0,
+                stop: progressInSeconds ? progressInSeconds + 0.5 : 10,
+              }
             : { start: prev.start, stop: progressInSeconds }
         );
       }
     },
-    [isLeftDragging, isRightDragging, isProgressDragging]
+    [
+      isLeftDragging,
+      isRightDragging,
+      isProgressDragging,
+      leftButtonPosition,
+      rightButtonPosition,
+    ]
   );
 
   const handleLeftButtonDrag = () => {
@@ -188,15 +216,10 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
   const handleEditButtonStop = useCallback(() => {
     if (!videoRef.current) return;
 
-    if (isLeftDragging && videoDuration) {
-      videoRef.current.currentTime = videoDuration.start;
-    } else if (isRightDragging && videoDuration) {
-      videoRef.current.currentTime = videoDuration.stop;
-    }
     setIsLeftDragging(false);
     setIsRightDragging(false);
     setIsProgressDragging(false);
-  }, [isLeftDragging, isRightDragging, videoDuration]);
+  }, []);
 
   useEffect(() => {
     document.addEventListener("mousemove", handleEditButtonMove);
@@ -224,7 +247,7 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
       !isRightDragging &&
       !isLeftDragging
     ) {
-      videoRef.current.currentTime = videoDuration.start;
+      videoRef.current.currentTime = videoDuration.start + 0.5;
       videoRef.current.play();
     }
     if (
@@ -249,6 +272,22 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
       "endTime",
       String(videoDuration?.stop ?? videoRef.current.duration)
     );
+    const videoWidth = videoRef.current.videoWidth;
+    const videoHeight = videoRef.current.videoHeight;
+
+    const cropX = Math.round((croppedValues.xPercent / 100) * videoWidth);
+    const cropY = Math.round((croppedValues.yPercent / 100) * videoHeight);
+    const cropWidth = Math.round(
+      (croppedValues.widthPercent / 100) * videoWidth
+    );
+    const cropHeight = Math.round(
+      (croppedValues.heightPercent / 100) * videoHeight
+    );
+
+    formData.append("cropX", cropX.toString());
+    formData.append("cropY", cropY.toString());
+    formData.append("cropWidth", cropWidth.toString());
+    formData.append("cropHeight", cropHeight.toString());
 
     const res = await fetch("/api/upload", {
       method: "POST",
@@ -269,7 +308,6 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
     URL.revokeObjectURL(url);
     setIsLoading(false);
   }
-
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -280,8 +318,11 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
       const duration = video.duration;
       const timeArray: number[] = [];
 
+      const parts = duration / 6;
+
       for (let i = 0; i <= 6; i++) {
-        timeArray.push((duration / 10) * i);
+        console.log(parts * i);
+        timeArray.push(parts * i);
       }
 
       setTimeArray(timeArray);
@@ -326,22 +367,47 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
     setIsMute((prev) => !prev);
   };
 
+  const handleVolumeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setIsMute(false);
+    const newVolume = parseFloat(event.target.value);
+    setVolume(newVolume);
+    if (videoRef.current) {
+      videoRef.current.volume = newVolume;
+    }
+  };
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.volume = volume;
+    }
+  }, [volume]);
+
+  usePreventScroll({ isDisabled: !isCropping });
+
+  const hasCroppedChange =
+    croppedValues.heightPercent !== 100 ||
+    croppedValues.widthPercent !== 100 ||
+    croppedValues.xPercent !== 0 ||
+    croppedValues.yPercent !== 0;
+
   return (
-    <div className="flex flex-col  items-center relative justify-center w-full px-2">
+    <div className="flex flex-col  items-center relative justify-center w-full px-4 sm:max-lg:pb-[200px]">
       <div className="flex gap-2 pb-4 items-center justify-between w-full">
-        <span className="text-[0.80rem] max-w-[200px] overflow-x-auto single-line-ellipsis">
-          {uploadFile.file.name.slice(0, 35)}
+        <span className="text-[0.80rem] max-w-[200px] single-line-ellipsis">
+          {uploadFile.file.name.slice(0, 30)}
         </span>
         <form onSubmit={handleSubmit}>
           <button
-            className="rounded-md cursor-pointer w-[120px] flex items-center justify-center gap-4 bg-neutral-50 py-2 text-black text-[0.80rem]"
+            className={`${
+              hasCroppedChange ? "" : "opacity-50 pointer-events-none"
+            } rounded-md cursor-pointer w-[120px] flex items-center justify-center gap-4 bg-neutral-50 py-2 text-black text-[0.80rem]`}
             type="submit"
           >
             {isLoading ? (
               <LoadingSpinner width="24px" height="24px" />
             ) : (
               <div className="flex items-center justify-center gap-3">
-                Export
+                Save
                 <DownloadIcon width="24px" height="24px" />
               </div>
             )}
@@ -349,31 +415,61 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
         </form>
       </div>
       <div className="relative flex items-center justify-center w-full h-full">
+        <Cropper
+          setIsCropping={setIsCropping}
+          setCroppedValues={setCroppedValues}
+        />
         <video
           ref={videoRef}
           loop
-          disableRemotePlayback={true}
-          playsInline
           muted={isMute}
+          playsInline
           onTimeUpdate={handleOutOfBoundariesCheck}
           preload="metadata"
-          className="aspect-square bg-black w-full h-full rounded-xl"
+          width={700}
+          height={700}
+          className="rounded-xl object-contain object-center max-h-[700px] max-w-full"
           src={uploadFile.src}
+          disableRemotePlayback={true}
         />
-        <button
-          onClick={togglePlayPause}
-          className="absolute bottom-3 left-3 z-10 cursor-pointer"
-        >
-          <PlayPauseIcon isPaused={isPlaying} width="24px" height="24px" />
-        </button>
-        <button
-          onClick={toggleMute}
-          className="absolute bottom-3 left-12 z-10 cursor-pointer"
-        >
-          <Mute isMute={isMute} width="24px" height="24px" />
-        </button>
+        {!isCropping && (
+          <>
+            <button
+              onClick={togglePlayPause}
+              className="absolute bottom-3 left-3 z-10 cursor-pointer"
+            >
+              <PlayPauseIcon isPaused={isPlaying} width="24px" height="24px" />
+            </button>
+            <div
+              onMouseEnter={() => setShowVolumeBar(true)}
+              onMouseLeave={() => setShowVolumeBar(false)}
+              className="absolute bottom-3 left-12 z-10 flex items-center justify-center gap-2"
+            >
+              <button onClick={toggleMute} className=" cursor-pointer">
+                <Mute isMute={isMute} width="24px" height="24px" />
+              </button>
+              {showVolumeBar && (
+                <div className="flex items-center pl-3 justify-center w-[50px] sm:max-lg:hidden">
+                  <input
+                    className="volume-slider"
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={volume}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleVolumeChange(e);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
-      <div className="relative w-full h-[100px]">
+      <div className="relative w-full h-[110px]">
         <div className="relative w-full flex grid-cols-6 py-4 items-center justify-between px-2">
           {timeArray &&
             timeArray.map((time, index) => (
@@ -386,25 +482,32 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
             ))}
         </div>
         {!isLeftDragging && (
-          <button
-            onMouseDown={handleProgressDrag}
-            onTouchStart={handleProgressDrag}
+          <div
             style={{ left: `${videoProgressBar}%` }}
-            className="absolute cursor-pointer bottom-0 h-[60%] z-[40] w-[5px] rounded-xl bg-blue-400"
-          ></button>
+            className="absolute  bottom-0 flex items-center justify-center h-[95%] z-[80] w-[2px] rounded-xl bg-red-600"
+          >
+            <button
+              onMouseDown={handleProgressDrag}
+              onTouchStart={handleProgressDrag}
+              className="top-0 cursor-pointer w-3 h-3 absolute bg-red-700 rounded-full"
+            ></button>
+          </div>
         )}
         <div
           ref={videoBarRef}
-          className="min-w-full flex bg-neutral-900 cursor-pointer  h-10  relative z-[5]  rounded-xl"
+          className="min-w-full flex bg-neutral-900 cursor-pointer relative  h-10   z-[5] rounded-lg"
         >
           <button
             onMouseDown={handleLeftButtonDrag}
             onTouchStart={handleLeftButtonDrag}
             ref={leftButton}
             style={{ left: `${leftButtonPosition}%` }}
-            className="absolute flex items-center justify-center  w-[12px]  z-5 cursor-pointer"
+            className="absolute z-5 cursor-pointer"
           >
-            <div className="h-10 bg-white w-[6px] rounded-xl"></div>
+            <div className="relative flex items-center justify-center h-10">
+              <div className="absolute -inset-2" />
+              <div className="h-10 bg-white w-[6px] rounded-xl z-10" />
+            </div>
           </button>
           <button
             onMouseDown={handleRightButtonDrag}
@@ -414,13 +517,16 @@ const VideoPlayer: React.FC<Props> = ({ uploadFile }) => {
               left: `${rightButtonPosition}%`,
               transform: "translateX(-80%)",
             }}
-            className="absolute flex items-center justify-center  w-[12px]  z-5 cursor-pointer"
+            className="absolute z-5 cursor-pointer"
           >
-            <div className="h-10 bg-white w-[6px] rounded-xl"></div>
+            <div className="relative flex items-center justify-center h-10">
+              <div className="absolute -inset-2" />
+              <div className="h-10 bg-white w-[6px] rounded-xl z-10" />
+            </div>
           </button>
         </div>
       </div>
     </div>
   );
 };
-export default VideoPlayer;
+export default VideoEditor;

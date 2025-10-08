@@ -12,9 +12,17 @@
   --font-mono: var(--font-geist-mono);
 }
 .single-line-ellipsis {
-  white-space: nowrap; /* Forces text to stay in a single line */
-  overflow: hidden; /* Hides any overflow content */
-  text-overflow: ellipsis; /* Adds "…" at the cutoff point */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.volume-slider {
+  width: 70px;
+  height: 5px;
+  outline: none;
+  transition: background 150ms ease-in-out;
+  cursor: pointer;
 }
 
 @media (prefers-color-scheme: dark) {

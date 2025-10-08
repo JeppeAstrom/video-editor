@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { UploadFile } from "./types/uploadFile";
-import VideoPlayer from "./videoPlayer";
+import VideoPlayer from "./videoEditor";
 
 export default function Home() {
   const [media, setMedia] = useState<UploadFile>();
@@ -45,7 +45,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center mx-auto lg:max-w-[600px] w-full py-4">
+    <div className="flex flex-col items-center justify-center mx-auto  w-fit py-4">
       <VideoPlayer uploadFile={media} />
     </div>
   );
